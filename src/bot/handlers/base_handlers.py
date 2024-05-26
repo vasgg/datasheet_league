@@ -7,6 +7,7 @@ from gspread import Client
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.users_dialog import start_dialog_handler
+from bot.internal.gsheets import post_to_player_sheet
 from config import settings
 from database.crud.bet import get_bet_by_id
 from database.crud.event import get_active_events, get_event_by_id
@@ -34,7 +35,7 @@ async def support_message(message: types.Message, db_session: AsyncSession) -> N
 
 
 @router.message(Command('new'))
-async def new_game_message(message: types.Message, db_session: AsyncSession, dialog_manager: DialogManager) -> None:
+async def new_game_message(message: types.Message, db_session: AsyncSession, dialog_manager: DialogManager, gspread_client: Client) -> None:
     if message.from_user.id != settings.ADMIN:
         return
     new_event = Event(
@@ -44,7 +45,8 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, dia
     )
     db_session.add(new_event)
     await db_session.flush()
-    text = f'Event {new_event.id} created.'
+    text = f'Event {new_event.id}, {new_event.league}, {new_event.bet_name} added'
+
     await message.answer(text=text)
     await start_dialog_handler(message, dialog_manager)
 
@@ -61,7 +63,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         return
     event_id = int(message.text.split()[1].strip(','))
     event = await get_event_by_id(event_id, db_session)
-    bet: Bet = await get_bet_by_id(event_id, db_session)
+    bet: Bet = await get_bet_by_id(event_id, message.from_user.id, db_session)
     if not bet:
         await message.answer(text=f'don\'t have access to event {event_id}\n'
                                   f'use /show_active to find active events')
@@ -77,5 +79,14 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
     bet.created_at = datetime.now(timezone.utc)
     db_session.add(bet)
     await db_session.commit()
+    data = {
+        'Notes': '',
+        'Date sent': datetime.now().strftime("%-m/%-d/%Y"),
+        'League': event.league,
+        'Bet Name': event.bet_name,
+        'Risk': bet.risk_amount,
+        'Odds': bet.odds,
+    }
+    await post_to_player_sheet(f'{message.from_user.full_name} bets', data, gspread_client)
     await message.answer(text=f'Event {event_id}, {event.league}, {event.bet_name}:\n'
                               f'Bet {bet.risk_amount}, Odds {bet.odds} filled.')
