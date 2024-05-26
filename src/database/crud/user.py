@@ -23,20 +23,7 @@ async def get_user_from_db_by_tg_id(telegram_id: int, db_session: AsyncSession) 
     return user
 
 
-async def get_user_from_db_by_id(user_id: int, db_session: AsyncSession) -> User:
-    query = select(User).filter(User.id == user_id)
-    result: Result = await db_session.execute(query)
-    user = result.scalar()
-    return user
-
-
 async def get_all_users(db_session: AsyncSession) -> list[User]:
     query = select(User).filter(User.telegram_id != settings.ADMIN)
     result = await db_session.execute(query)
     return list(result.scalars().all())
-
-
-async def get_users_count(db_session: AsyncSession) -> int:
-    query = select(func.count()).select_from(User)
-    result = await db_session.execute(query)
-    return result.scalar()

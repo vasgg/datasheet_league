@@ -4,14 +4,12 @@ import sys
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from enums import Stage
-
 
 class Settings(BaseSettings):
     BOT_TOKEN: SecretStr
     ADMIN: int
     DB_NAME: str
-    STAGE: Stage
+    TABLE_NAME: str
     db_echo: bool = False
 
     @property
