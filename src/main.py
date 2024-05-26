@@ -17,7 +17,7 @@ from bot.middlewares.auth_middleware import AuthMiddleware
 from bot.middlewares.session_middlewares import DBSessionMiddleware, GSpreadSessionMiddleware
 from bot.middlewares.updates_dumper_middleware import UpdatesDumperMiddleware
 from config import get_logging_config, settings
-from database.tables_helper import get_db
+from database.tables_helper import create_or_drop_db, get_db
 
 
 async def main():
@@ -30,6 +30,7 @@ async def main():
     logging.info("bot started")
     storage = MemoryStorage()
     db = get_db()
+    asyncio.run(create_or_drop_db(db.engine))
     dispatcher = Dispatcher(storage=storage)
     db_session_middleware = DBSessionMiddleware(db)
     dispatcher.message.middleware(db_session_middleware)
