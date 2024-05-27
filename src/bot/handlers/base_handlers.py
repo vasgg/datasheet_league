@@ -99,6 +99,6 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         'Risk': bet.risk_amount,
         'Odds': bet.odds,
     }
-    await post_to_player_sheet(f'{message.from_user.full_name} bets', data, gspread_client)
     await message.answer(text=f'Event {event_id}, {event.league}, {event.bet_name}:\n'
                               f'Bet {bet.risk_amount}, Odds {bet.odds} filled.')
+    await post_to_player_sheet(f'{message.from_user.full_name} bets', data, gspread_client)

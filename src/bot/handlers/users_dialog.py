@@ -62,8 +62,8 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
         'Bet Name': event.bet_name,
         'Worst Odds': event.worst_odds
     }
-    await post_to_master_sheet(data, client)
     await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
+    await post_to_master_sheet(data, client)
 
 
 users_multiselect = Multiselect(
