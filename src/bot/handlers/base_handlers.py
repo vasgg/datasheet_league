@@ -38,14 +38,21 @@ async def support_message(message: types.Message, db_session: AsyncSession) -> N
 async def new_game_message(message: types.Message, db_session: AsyncSession, dialog_manager: DialogManager, gspread_client: Client) -> None:
     if message.from_user.id != settings.ADMIN:
         return
+    try:
+        league = message.text.split(',')[0].split()[1]
+        bet_name = message.text.split(',')[1].strip()
+        worst_odds = int(message.text.split(',')[2].strip())
+    except ValueError:
+        await message.answer(text='please provide correct values')
+        return
     new_event = Event(
-        league=message.text.split(',')[0].split()[1],
-        bet_name=message.text.split(',')[1].strip(),
-        worst_odds=int(message.text.split(',')[2].strip()),
+        league=league,
+        bet_name=bet_name,
+        worst_odds=worst_odds,
     )
     db_session.add(new_event)
     await db_session.flush()
-    text = f'Event {new_event.id}, {new_event.league}, {new_event.bet_name} added'
+    text = f'Event {new_event.id}, {new_event.league}, {new_event.bet_name}, worst odds {new_event.worst_odds} added'
 
     await message.answer(text=text)
     await start_dialog_handler(message, dialog_manager)
@@ -61,15 +68,19 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
                                   f'or /show_active to find active events')
 
         return
-    event_id = int(message.text.split()[1].strip(','))
+    try:
+        event_id = int(message.text.split()[1].strip(','))
+        risk_amount = int(message.text.split(',')[1].strip())
+        odds = int(message.text.split(',')[2].strip())
+    except ValueError:
+        await message.answer(text='please provide correct values')
+        return
     event = await get_event_by_id(event_id, db_session)
     bet: Bet = await get_bet_by_id(event_id, message.from_user.id, db_session)
     if not bet:
         await message.answer(text=f'don\'t have access to event {event_id}\n'
                                   f'use /show_active to find active events')
         return
-    risk_amount = int(message.text.split(',')[1].strip())
-    odds = int(message.text.split(',')[2].strip())
     if odds < event.worst_odds:
         await message.answer(text=f'odds less than {event.worst_odds} are not accepted.')
         return
@@ -81,6 +92,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
     await db_session.commit()
     data = {
         'Notes': '',
+        'ID': event.id,
         'Date sent': datetime.now().strftime("%-m/%-d/%Y"),
         'League': event.league,
         'Bet Name': event.bet_name,

@@ -31,6 +31,7 @@ async def get_users_data(dialog_manager: DialogManager, db_session: AsyncSession
 
 
 async def on_user_selected(callback: CallbackQuery, button: Button, manager: DialogManager, **kwargs):
+    await callback.message.delete()
     await callback.answer()
     users_multiselect_widget = manager.dialog().find("m_users")
     selected_users = users_multiselect_widget.get_checked(manager)
@@ -47,6 +48,7 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
             )
             db_session.add(new_bet)
             await db_session.flush()
+            # with contextlib.suppress(TelegramBadRequest):
             await callback.bot.send_message(user, text)
         await db_session.commit()
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -54,13 +56,14 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
     client = gspread.authorize(credentials)
     data = {
         'Notes': '',
+        'ID': event.id,
         'Date sent': datetime.now().strftime("%-m/%-d/%Y"),
         'League': event.league,
         'Bet Name': event.bet_name,
         'Worst Odds': event.worst_odds
     }
     await post_to_master_sheet(data, client)
-    await callback.message.answer(f'Invitation sent to {len(selected_users)} users!')
+    await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
 
 
 users_multiselect = Multiselect(
@@ -69,7 +72,6 @@ users_multiselect = Multiselect(
     id="m_users",
     item_id_getter=operator.itemgetter(1),
     items="users",
-    min_selected=1,
     max_selected=20,
 )
 

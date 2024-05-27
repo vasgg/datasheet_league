@@ -29,8 +29,10 @@ async def main():
     bot = Bot(token=settings.BOT_TOKEN.get_secret_value(), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     logging.info("bot started")
     storage = MemoryStorage()
+
     db = get_db()
     await create_or_drop_db(db.engine)
+
     dispatcher = Dispatcher(storage=storage)
     db_session_middleware = DBSessionMiddleware(db)
     dispatcher.message.middleware(db_session_middleware)
