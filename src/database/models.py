@@ -20,15 +20,13 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
     fullname: Mapped[str]
     username: Mapped[str | None] = mapped_column(String(32))
-    balance: Mapped[int] = mapped_column(default=0)
+    last_time_checked: Mapped[bool] = mapped_column(default=False, server_default='0')
 
     def __str__(self):
-        balance_in_dollars = self.balance / 100.0
-        print(f"User {self.fullname} has a balance of ${balance_in_dollars:.2f}")
-        return f'{self.__class__.__name__}(id={self.id}, telegram_id={self.telegram_id}, fullname={self.fullname}, balance={balance_in_dollars:.2f})'
+        return f"User(id={self.id}, fullname={self.fullname}, telegram_id={self.telegram_id})"
 
     def __repr__(self):
-        return str(self)
+        return self.__str__()
 
 
 class Event(Base):

@@ -9,9 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram_dialog.setup import setup_dialogs
 
 from bot.handlers.base_handlers import router as base_router
-from bot.handlers.errors_handler import router as errors_router
 from bot.internal.commands import set_bot_commands
-from bot.internal.notify_admin import on_shutdown_notify, on_startup_notify
 from bot.handlers.users_dialog import select_users_dialog
 from bot.middlewares.auth_middleware import AuthMiddleware
 from bot.middlewares.session_middlewares import DBSessionMiddleware, GSpreadSessionMiddleware
@@ -43,9 +41,7 @@ async def main():
     dispatcher.callback_query.middleware(AuthMiddleware())
     dispatcher.update.outer_middleware(UpdatesDumperMiddleware())
     dispatcher.startup.register(set_bot_commands)
-    dispatcher.startup.register(on_startup_notify)
-    dispatcher.shutdown.register(on_shutdown_notify)
-    dispatcher.include_routers(base_router, errors_router, select_users_dialog)
+    dispatcher.include_routers(base_router, select_users_dialog)
 
     setup_dialogs(dispatcher)
     await dispatcher.start_polling(bot)

@@ -7,9 +7,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     BOT_TOKEN: SecretStr
-    ADMIN: int
     DB_NAME: str
     TABLE_NAME: str
+    OWNER: str
+    BET_ADMINS: list
     db_echo: bool = False
 
     @property
