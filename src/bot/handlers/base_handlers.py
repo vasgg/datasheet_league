@@ -55,12 +55,15 @@ async def support_message(message: types.Message, db_session: AsyncSession) -> N
 async def new_game_message(message: types.Message, db_session: AsyncSession, dialog_manager: DialogManager) -> None:
     if message.from_user.id not in [settings.OWNER, *settings.BET_ADMINS]:
         return
+    if message.text == '/new':
+        await message.answer(text='use /new Legue, bet_name, worst odds')
     try:
         league = message.text.split(',')[0].split()[1]
         bet_name = message.text.split(',')[1].strip()
         worst_odds = int(message.text.split(',')[2].strip())
-    except ValueError:
-        await message.answer(text='please provide correct values')
+    except (ValueError, IndexError):
+        await message.answer(text='please provide correct values'
+                                  'use /new Legue, bet_name, worst odds')
         return
     new_event = Event(
         league=league,
@@ -89,7 +92,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         event_id = int(message.text.split()[1].strip(','))
         risk_amount = int(message.text.split(',')[1].strip())
         odds = int(message.text.split(',')[2].strip())
-    except ValueError:
+    except (ValueError, IndexError):
         await message.answer(text='please provide correct values')
         return
     event = await get_event_by_id(event_id, db_session)
