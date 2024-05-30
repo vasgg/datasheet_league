@@ -1,4 +1,4 @@
-from sqlalchemy import Result, func, select
+from sqlalchemy import Result, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
@@ -23,7 +23,20 @@ async def get_user_from_db_by_tg_id(telegram_id: int, db_session: AsyncSession) 
     return user
 
 
+async def get_last_time_checked_users_ids(db_session: AsyncSession) -> list[User.telegram_id]:
+    query = select(User.telegram_id).filter(User.last_time_checked,
+                                            User.telegram_id != settings.ADMIN)
+    result: Result = await db_session.execute(query)
+    return list(result.scalars().all())
+
+
 async def get_all_users(db_session: AsyncSession) -> list[User]:
     query = select(User).filter(User.telegram_id != settings.ADMIN)
+    result = await db_session.execute(query)
+    return list(result.scalars().all())
+
+
+async def get_all_users_ids(db_session: AsyncSession) -> list[User.telegram_id]:
+    query = select(User.telegram_id).filter(User.telegram_id != settings.ADMIN)
     result = await db_session.execute(query)
     return list(result.scalars().all())
