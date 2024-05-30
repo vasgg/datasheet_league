@@ -24,7 +24,7 @@ class AuthMiddleware(BaseMiddleware):
         if not user:
             user = await add_user_to_db(event.from_user, session)
             sheet_name = f'{user.fullname} bets'
-            if event.from_user.id != settings.ADMIN:
+            if event.from_user.id not in [settings.OWNER, *settings.BET_ADMINS]:
                 with contextlib.suppress(gspread.exceptions.APIError):
                     # noinspection PyUnusedLocal
                     # add_new_sheet_task = asyncio.create_task(create_new_sheet(sheet_name, gspread_client))
