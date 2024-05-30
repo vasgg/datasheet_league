@@ -1,18 +1,16 @@
-from datetime import datetime
 import operator
+from typing import Any
 
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import (Dialog, DialogManager, StartMode, Window)
 from aiogram_dialog.widgets.kbd import Button, Cancel, Group, Multiselect
 from aiogram_dialog.widgets.text import Const, Format
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.internal.gsheets import post_to_master_sheet
 from database.crud.event import get_last_event
-from database.crud.user import get_all_users
+from database.crud.user import get_all_users, get_all_users_ids, get_last_time_checked_users_ids, get_user_from_db_by_tg_id
 from database.models import Bet
 from database.tables_helper import get_db
 
@@ -31,39 +29,43 @@ async def get_users_data(dialog_manager: DialogManager, db_session: AsyncSession
 
 
 async def on_user_selected(callback: CallbackQuery, button: Button, manager: DialogManager, **kwargs):
-    await callback.message.delete()
     await callback.answer()
+    await callback.message.delete()
     users_multiselect_widget = manager.dialog().find("m_users")
     selected_users = users_multiselect_widget.get_checked(manager)
     await manager.reset_stack()
     db = get_db()
     async with db.session_factory() as db_session:
+        client = manager.middleware_data["gspread_client"]
         event = await get_last_event(db_session)
         text = (f'Event {event.id}, {event.league}, {event.bet_name}, {event.worst_odds}\n'
                 f'Use <code>/fill {event.id}, Risk Amount, Odds</code> to reply')
-        for user in selected_users:
-            new_bet = Bet(
-                event_id=event.id,
-                user_telegram_id=user,
-            )
-            db_session.add(new_bet)
-            await db_session.flush()
-            # with contextlib.suppress(TelegramBadRequest):
-            await callback.bot.send_message(user, text)
-        await db_session.commit()
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    credentials = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-    client = gspread.authorize(credentials)
-    data = {
-        'Notes': '',
-        'ID': event.id,
-        'Date sent': datetime.now().strftime("%-m/%-d/%Y"),
-        'League': event.league,
-        'Bet Name': event.bet_name,
-        'Worst Odds': event.worst_odds
-    }
-    await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
-    await post_to_master_sheet(data, client)
+        all_users = await get_all_users_ids(db_session)
+        for user_id in all_users:
+            user = await get_user_from_db_by_tg_id(user_id, db_session)
+            if str(user_id) in selected_users:
+                user.last_time_checked = True
+                new_bet = Bet(
+                    event_id=event.id,
+                    user_telegram_id=user_id,
+                )
+                db_session.add(new_bet)
+                await callback.bot.send_message(user_id, text)
+            else:
+                user.last_time_checked = False
+            db_session.add(user)
+            await db_session.commit()
+
+        await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
+        await post_to_master_sheet(event, db_session, client)
+
+
+async def on_dialog_start(start_data: Any, manager: DialogManager):
+    db = get_db()
+    async with db.session_factory() as db_session:
+        last_time_checked_users_ids = await get_last_time_checked_users_ids(db_session)
+    for user_id in last_time_checked_users_ids:
+        await users_multiselect.set_checked(manager.event, user_id, True, manager)
 
 
 users_multiselect = Multiselect(
@@ -86,6 +88,7 @@ select_users_dialog = Dialog(
         state=DialogSG.select_users,
         getter=get_users_data,
     ),
+    on_start=on_dialog_start
 )
 
 
