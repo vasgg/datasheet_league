@@ -39,18 +39,19 @@ async def create_new_player_sheet(name: str, client: gspread.Client):
     new_sheet.update([PLAYER_STATS[1]], 'K4:Q4', raw=False)
     new_sheet.update([PLAYER_STATS[2]], 'K5:Q5')
     new_sheet.update([PLAYER_STATS[3]], 'K6:Q6', raw=False)
+    logger.info(f"Created new sheet '{name}'")
 
 
 async def post_to_master_sheet(event: Event, db_session: AsyncSession, client: gspread.Client):
     line = await count_events(db_session) + 1
     worksheet = await ensure_master_sheet(client)
     bet = [[datetime.now().strftime("%-m/%-d/%Y"), event.league, event.bet_name, str(event.worst_odds)]]
-    win = [[f'=ROUND(IF(G{line}<0,(100/-G{line})*F2,(G{line}/100)*F{line}),0)']]
+    win = [[f'=ROUND(IF(G{line}<0,(100/-G{line})*F{line},(G{line}/100)*F{line}),0)']]
     net = [[f'=IFERROR(IFS(REGEXMATCH(I{line}, "W"), H{line},REGEXMATCH(I{line}, "L"), 0-F{line}),0)']]
     worksheet.update(bet, f'B{line}:E{line}')
     worksheet.update(win, f'H{line}', raw=False)
     worksheet.update(net, f'J{line}', raw=False)
-    logger.info(f"Added row to 'master': {bet}")
+    logger.info(f"Added row to 'master': {bet}, line {line}")
 
 
 async def post_to_player_sheet(sheet_name: str, data: list, line: int, client: gspread.Client):
@@ -63,7 +64,7 @@ async def post_to_player_sheet(sheet_name: str, data: list, line: int, client: g
     ]]
     worksheet.update(data, f'B{line}:F{line}')
     worksheet.update(more_data, f'G{line}:I{line}', raw=False)
-    logger.info(f"Added row to '{sheet_name}': {data}")
+    logger.info(f"Added row to '{sheet_name}': {data}, line {line}")
 
 
 async def update_master_list_values(event_id: int, line: int, client: gspread.Client, db_session: AsyncSession):
@@ -72,6 +73,7 @@ async def update_master_list_values(event_id: int, line: int, client: gspread.Cl
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet("master")
     worksheet.update([[total_risk, average_odds]], f'F{line}:G{line}')
+    logger.info(f"Updated 'master' list: {total_risk}, {average_odds}, line {line}")
 
 
 async def get_user_balance(fullname: str, client: gspread.Client) -> str:
