@@ -54,12 +54,12 @@ async def post_to_master_sheet(event: Event, db_session: AsyncSession, client: g
     logger.info(f"Added row to 'master': {bet}, line {line}")
 
 
-async def post_to_player_sheet(sheet_name: str, data: list, line: int, client: gspread.Client):
+async def post_to_player_sheet(sheet_name: str, event_id: int, data: list, line: int, client: gspread.Client):
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet(sheet_name)
     more_data = [[
         f'=ROUND(IF(F{line}<0,(100/-F{line})*E{line},(F{line}/100)*E{line}),0)',
-        f'=master!I{line}',
+        f'=master!I{event_id + 1}',
         f'=IFERROR(IFS(REGEXMATCH(H{line}, "W"), G{line},REGEXMATCH(H{line}, "L"), 0-E{line}),0)'
     ]]
     worksheet.update(data, f'B{line}:F{line}')

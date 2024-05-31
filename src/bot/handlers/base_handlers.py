@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from aiogram import Router, types
 from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram_dialog import DialogManager
 from gspread import Client
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,8 +53,9 @@ async def support_message(message: types.Message, db_session: AsyncSession) -> N
 
 
 @router.message(Command('new'))
-async def new_game_message(message: types.Message, db_session: AsyncSession, dialog_manager: DialogManager) -> None:
+async def new_game_message(message: types.Message, dialog_manager: DialogManager, state: FSMContext) -> None:
     if message.from_user.id not in [settings.OWNER, *settings.BET_ADMINS]:
+        await message.answer(text='New command enabled only for owner and bet admins.')
         return
     try:
         league = message.text.split(',')[0].split()[1]
@@ -63,15 +65,8 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, dia
         await message.answer(text='please provide correct values\n'
                                   'use <code>/new Legue, bet_name, worst odds</code>')
         return
-    new_event = Event(
-        league=league,
-        bet_name=bet_name,
-        worst_odds=worst_odds,
-    )
-    db_session.add(new_event)
-    await db_session.flush()
-    text = f'Event {new_event.id}, {new_event.league}, {new_event.bet_name}, worst odds {new_event.worst_odds} added'
-
+    await state.update_data(league=league, bet_name=bet_name, worst_odds=worst_odds)
+    text = f'Creating new event, {league}, {bet_name}, worst odds {worst_odds}...'
     await message.answer(text=text)
     await start_dialog_handler(message, dialog_manager)
 
@@ -139,5 +134,5 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         bet.odds,
     ]]
     line = await count_bets_from_user(message.from_user.id, db_session) + 1
-    await post_to_player_sheet(f'{message.from_user.full_name} bets', data, line, gspread_client)
+    await post_to_player_sheet(f'{message.from_user.full_name} bets', event_id, data, line, gspread_client)
     await update_master_list_values(event_id, event_id + 1, gspread_client, db_session)

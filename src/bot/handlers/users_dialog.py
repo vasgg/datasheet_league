@@ -9,9 +9,8 @@ from aiogram_dialog.widgets.text import Const, Format
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.internal.gsheets import post_to_master_sheet
-from database.crud.event import get_last_event
 from database.crud.user import get_all_users, get_all_users_ids, get_last_time_checked_users_ids, get_user_from_db_by_tg_id
-from database.models import Bet
+from database.models import Bet, Event
 from database.tables_helper import get_db
 
 
@@ -31,13 +30,26 @@ async def get_users_data(dialog_manager: DialogManager, db_session: AsyncSession
 async def on_user_selected(callback: CallbackQuery, button: Button, manager: DialogManager, **kwargs):
     await callback.answer()
     await callback.message.delete()
+
+    state = manager.middleware_data['state']
+    data = await state.get_data()
+    league = data.get('league')
+    bet_name = data.get('bet_name')
+    worst_odds = data.get('worst_odds')
+
     users_multiselect_widget = manager.dialog().find("m_users")
     selected_users = users_multiselect_widget.get_checked(manager)
     await manager.reset_stack()
     db = get_db()
     async with db.session_factory() as db_session:
+        event = Event(
+            league=league,
+            bet_name=bet_name,
+            worst_odds=worst_odds,
+        )
+        db_session.add(event)
+        await db_session.flush()
         client = manager.middleware_data["gspread_client"]
-        event = await get_last_event(db_session)
         text = (f'Event {event.id}, {event.league}, {event.bet_name}, {event.worst_odds}\n'
                 f'Use <code>/fill {event.id}, Risk Amount, Odds</code> to reply')
         all_users = await get_all_users_ids(db_session)
@@ -54,10 +66,9 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
             else:
                 user.last_time_checked = False
             db_session.add(user)
-            await db_session.commit()
-
-        await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
-        await post_to_master_sheet(event, db_session, client)
+        await db_session.commit()
+    await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
+    await post_to_master_sheet(event, db_session, client)
 
 
 async def on_dialog_start(start_data: Any, manager: DialogManager):
@@ -87,8 +98,9 @@ select_users_dialog = Dialog(
         Cancel(),
         state=DialogSG.select_users,
         getter=get_users_data,
+
     ),
-    on_start=on_dialog_start
+    on_start=on_dialog_start,
 )
 
 
