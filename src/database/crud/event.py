@@ -28,10 +28,10 @@ async def get_active_events(telegram_id: int, db_session: AsyncSession) -> list[
 
 
 async def get_total_risk_by_event_id(event_id: int, db_session: AsyncSession) -> int:
-    query = select(func.sum(Bet.risk_amount)).filter(Bet.event_id == event_id,
-                                                     Bet.status == BetStatus.FILLED)
+    query = select(Bet.risk_amount).filter(Bet.event_id == event_id,
+                                           Bet.status == BetStatus.FILLED)
     result: Result = await db_session.execute(query)
-    return result.scalar()
+    return sum(list(result.scalars().all()))
 
 
 async def get_average_weighted_odds_by_event_id(event_id: int, db_session: AsyncSession) -> float:

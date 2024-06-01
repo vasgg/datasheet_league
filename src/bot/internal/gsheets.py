@@ -92,9 +92,9 @@ async def get_user_balance(fullname: str, client: gspread.Client) -> str:
 
 
 def count_filled_cells_in_notes_column(worksheet: gspread.Worksheet, end_row: int) -> int:
-    range_name = f'A2:A{end_row}'
-    cell_range = worksheet.range(range_name)
-    filled_cells_count = sum(1 for cell in cell_range if cell.value)
+    values = worksheet.col_values(1)[1:555]
+    filled_cells_count = sum(1 for value in values if value)
+    print(f"Filled cells count: {filled_cells_count}")
     return filled_cells_count
 
 

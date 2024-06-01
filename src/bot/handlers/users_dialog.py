@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.internal.gsheets import post_to_master_sheet
 from database.crud.user import get_all_users, get_all_users_ids, get_last_time_checked_users_ids, get_user_from_db_by_tg_id
 from database.models import Bet, Event
-from database.tables_helper import get_db
 
 
 class DialogSG(StatesGroup):
@@ -95,7 +94,6 @@ select_users_dialog = Dialog(
         Cancel(),
         state=DialogSG.select_users,
         getter=get_users_data,
-
     ),
     on_start=on_dialog_start,
 )

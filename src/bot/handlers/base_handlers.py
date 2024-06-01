@@ -133,6 +133,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         bet.odds,
     ]]
     sheet_name = f'{message.from_user.full_name} bets'
-    line = await count_bets_from_user(message.from_user.id, db_session) + 1
+    bets = await count_bets_from_user(message.from_user.id, db_session)
+    line = bets + 2
     await post_to_player_sheet(sheet_name, event_id, data, line, gspread_client)
     await update_master_list_values(event_id, event_id + 1, gspread_client, db_session)
