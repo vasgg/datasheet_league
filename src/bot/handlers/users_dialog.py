@@ -32,6 +32,8 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
     await callback.message.delete()
 
     state = manager.middleware_data['state']
+    db_session = manager.middleware_data['db_session']
+    client = manager.middleware_data["gspread_client"]
     data = await state.get_data()
     league = data.get('league')
     bet_name = data.get('bet_name')
@@ -40,42 +42,36 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
     users_multiselect_widget = manager.dialog().find("m_users")
     selected_users = users_multiselect_widget.get_checked(manager)
     await manager.reset_stack()
-    db = get_db()
-    async with db.session_factory() as db_session:
-        event = Event(
-            league=league,
-            bet_name=bet_name,
-            worst_odds=worst_odds,
-        )
-        db_session.add(event)
-        await db_session.flush()
-        client = manager.middleware_data["gspread_client"]
-        text = (f'Event {event.id}, {event.league}, {event.bet_name}, {event.worst_odds}\n'
-                f'Use <code>/fill {event.id}, Risk Amount, Odds</code> to reply')
-        all_users = await get_all_users_ids(db_session)
-        for user_id in all_users:
-            user = await get_user_from_db_by_tg_id(user_id, db_session)
-            if str(user_id) in selected_users:
-                user.last_time_checked = True
-                new_bet = Bet(
-                    event_id=event.id,
-                    user_telegram_id=user_id,
-                )
-                db_session.add(new_bet)
-                await callback.bot.send_message(user_id, text)
-            else:
-                user.last_time_checked = False
-            db_session.add(user)
-        await db_session.commit()
-        await db_session.close()
+    event = Event(
+        league=league,
+        bet_name=bet_name,
+        worst_odds=worst_odds,
+    )
+    db_session.add(event)
+    await db_session.flush()
+    text = (f'Event {event.id}, {event.league}, {event.bet_name}, {event.worst_odds}\n'
+            f'Use <code>/fill {event.id}, Risk Amount, Odds</code> to reply')
+    all_users = await get_all_users_ids(db_session)
+    for user_id in all_users:
+        user = await get_user_from_db_by_tg_id(user_id, db_session)
+        if str(user_id) in selected_users:
+            user.last_time_checked = True
+            new_bet = Bet(
+                event_id=event.id,
+                user_telegram_id=user_id,
+            )
+            db_session.add(new_bet)
+            await callback.bot.send_message(user_id, text)
+        else:
+            user.last_time_checked = False
+        db_session.add(user)
     await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
     await post_to_master_sheet(event, db_session, client)
 
 
 async def on_dialog_start(start_data: Any, manager: DialogManager):
-    db = get_db()
-    async with db.session_factory() as db_session:
-        last_time_checked_users_ids = await get_last_time_checked_users_ids(db_session)
+    db_session = manager.middleware_data['db_session']
+    last_time_checked_users_ids = await get_last_time_checked_users_ids(db_session)
     for user_id in last_time_checked_users_ids:
         await users_multiselect.set_checked(manager.event, user_id, True, manager)
 

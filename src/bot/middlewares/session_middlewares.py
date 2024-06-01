@@ -20,17 +20,9 @@ class DBSessionMiddleware(BaseMiddleware):
             event: Message,
             data: Dict[str, Any],
     ) -> Any:
-        async with self.db.session_factory() as db_session:
+        async with self.db.session_factory.begin() as db_session:
             data['db_session'] = db_session
-            try:
-                res = await handler(event, data)
-                with contextlib.suppress(PendingRollbackError):
-                    await db_session.commit()
-            except Exception:
-                await db_session.rollback()
-                raise
-            finally:
-                await db_session.close()
+            res = await handler(event, data)
             return res
 
 

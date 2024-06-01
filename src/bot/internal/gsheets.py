@@ -98,16 +98,13 @@ def count_filled_cells_in_notes_column(worksheet: gspread.Worksheet, end_row: in
     return filled_cells_count
 
 
-async def recount_master_balance(client: gspread.Client):
+async def add_summ_balance_formula(client: gspread.Client):
     spreadsheet = client.open(settings.TABLE_NAME)
-    sum_k4 = 0
-    for sheet in spreadsheet.worksheets():
-        if sheet.title.lower() != 'master':
-            try:
-                value = sheet.acell('K4').value
-                if value is not None and isinstance(value, (int, float)):
-                    sum_k4 += value
-            except Exception as e:
-                print(f"Error processing sheet {sheet.title}: {e}")
-    worksheet = spreadsheet.worksheet('master')
-    worksheet.update([[sum_k4]], 'L4')
+    all_sheets = spreadsheet.worksheets()
+    sheet_names = [sheet.title for sheet in all_sheets if sheet.title.lower() != 'master']
+
+    formula_parts = [f"INDIRECT(\"{sheet_name}!K4\")" for sheet_name in sheet_names]
+    formula = f"=SUM({','.join(formula_parts)})"
+
+    worksheet = await ensure_master_sheet(client)
+    worksheet.update([[formula]], f'L4', raw=False)
