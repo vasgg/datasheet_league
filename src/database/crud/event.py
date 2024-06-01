@@ -34,14 +34,14 @@ async def get_total_risk_by_event_id(event_id: int, db_session: AsyncSession) ->
     return result.scalar()
 
 
-async def get_average_weighted_odds_by_event_id(event_id: int, db_session: AsyncSession) -> float | str:
+async def get_average_weighted_odds_by_event_id(event_id: int, db_session: AsyncSession) -> float:
     bets = await get_bets_by_event_id(event_id, db_session)
     summ = 0
     total_risk = 0
     for bet in bets:
         summ += bet.odds * bet.risk_amount
         total_risk += bet.risk_amount
-    return summ / total_risk if total_risk != 0 else ''
+    return summ / total_risk if total_risk != 0 else 0
 
 
 async def count_events(db_session: AsyncSession) -> int:

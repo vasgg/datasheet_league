@@ -8,11 +8,11 @@ from gspread import Client
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.users_dialog import start_dialog_handler
-from bot.internal.gsheets import get_user_balance, post_to_player_sheet, update_master_list_values
+from bot.internal.gsheets import recount_master_balance, get_user_balance, post_to_player_sheet, update_master_list_values
 from config import settings
 from database.crud.bet import count_bets_from_user, get_user_bets_by_event_id
 from database.crud.event import get_active_events, get_event_by_id
-from database.models import Bet, Event, User
+from database.models import Bet, User
 from enums import BetStatus
 
 router = Router()
@@ -126,6 +126,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
                               f'Bet {bet.risk_amount}, Odds {bet.odds} filled.')
     db_session.add(bet)
     await db_session.commit()
+    await db_session.close()
     data = [[
         datetime.now().strftime("%-m/%-d/%Y"),
         event.league,
@@ -133,6 +134,8 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         bet.risk_amount,
         bet.odds,
     ]]
+    sheet_name = f'{message.from_user.full_name} bets'
     line = await count_bets_from_user(message.from_user.id, db_session) + 1
-    await post_to_player_sheet(f'{message.from_user.full_name} bets', event_id, data, line, gspread_client)
+    await post_to_player_sheet(sheet_name, event_id, data, line, gspread_client)
     await update_master_list_values(event_id, event_id + 1, gspread_client, db_session)
+    await recount_master_balance(gspread_client)

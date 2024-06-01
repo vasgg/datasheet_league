@@ -67,6 +67,7 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
                 user.last_time_checked = False
             db_session.add(user)
         await db_session.commit()
+        await db_session.close()
     await callback.message.answer(f'Invitation sent to {len(selected_users)} user(s).')
     await post_to_master_sheet(event, db_session, client)
 

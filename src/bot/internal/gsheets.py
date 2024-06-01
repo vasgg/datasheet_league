@@ -18,14 +18,21 @@ async def ensure_master_sheet(client: gspread.Client) -> gspread.Worksheet:
         worksheet = spreadsheet.worksheet("master")
     except gspread.exceptions.WorksheetNotFound:
         logger.info("Creating 'master' sheet as it does not exist.")
-        worksheet = spreadsheet.add_worksheet("master", 100, 20)
+        worksheet = spreadsheet.add_worksheet("master", 100, 24)
         worksheet.append_row(MASTER_HEADER)
     first_row = worksheet.row_values(1)
     if not first_row or first_row != MASTER_HEADER:
         logger.info("Adding headers to 'master' sheet.")
         worksheet.insert_row(MASTER_HEADER)
+
+    current_cols = len(worksheet.row_values(1))
+    target_col = 24
+    if current_cols < target_col:
+        cols_to_add = target_col - current_cols
+        worksheet.add_cols(cols_to_add)
+
     worksheet.update([MASTER_STATS[0]], 'L3:R3')
-    worksheet.update([MASTER_STATS[1]], 'L4:R4', raw=False)
+    worksheet.update([MASTER_STATS[1]], 'M4:R4', raw=False)
     worksheet.update([MASTER_STATS[2]], 'L5:R5')
     worksheet.update([MASTER_STATS[3]], 'L6:R6', raw=False)
     return worksheet
@@ -57,14 +64,16 @@ async def post_to_master_sheet(event: Event, db_session: AsyncSession, client: g
 async def post_to_player_sheet(sheet_name: str, event_id: int, data: list, line: int, client: gspread.Client):
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet(sheet_name)
+    users_rows = count_filled_cells_in_notes_column(worksheet, line)
+    new_line = users_rows + line
     more_data = [[
-        f'=ROUND(IF(F{line}<0,(100/-F{line})*E{line},(F{line}/100)*E{line}),0)',
+        f'=ROUND(IF(F{new_line}<0,(100/-F{new_line})*E{new_line},(F{new_line}/100)*E{new_line}),0)',
         f'=master!I{event_id + 1}',
-        f'=IFERROR(IFS(REGEXMATCH(H{line}, "W"), G{line},REGEXMATCH(H{line}, "L"), 0-E{line}),0)'
+        f'=IFERROR(IFS(REGEXMATCH(H{new_line}, "W"), G{new_line},REGEXMATCH(H{new_line}, "L"), 0-E{new_line}),0)'
     ]]
-    worksheet.update(data, f'B{line}:F{line}')
-    worksheet.update(more_data, f'G{line}:I{line}', raw=False)
-    logger.info(f"Added row to '{sheet_name}': {data}, line {line}")
+    worksheet.update(data, f'B{new_line}:F{new_line}')
+    worksheet.update(more_data, f'G{new_line}:I{new_line}', raw=False)
+    logger.info(f"Added row to '{sheet_name}': {data}, line {new_line}")
 
 
 async def update_master_list_values(event_id: int, line: int, client: gspread.Client, db_session: AsyncSession):
@@ -80,3 +89,25 @@ async def get_user_balance(fullname: str, client: gspread.Client) -> str:
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet(f"{fullname} bets")
     return worksheet.acell('K4').value
+
+
+def count_filled_cells_in_notes_column(worksheet: gspread.Worksheet, end_row: int) -> int:
+    range_name = f'A2:A{end_row}'
+    cell_range = worksheet.range(range_name)
+    filled_cells_count = sum(1 for cell in cell_range if cell.value)
+    return filled_cells_count
+
+
+async def recount_master_balance(client: gspread.Client):
+    spreadsheet = client.open(settings.TABLE_NAME)
+    sum_k4 = 0
+    for sheet in spreadsheet.worksheets():
+        if sheet.title.lower() != 'master':
+            try:
+                value = sheet.acell('K4').value
+                if value is not None and isinstance(value, (int, float)):
+                    sum_k4 += value
+            except Exception as e:
+                print(f"Error processing sheet {sheet.title}: {e}")
+    worksheet = spreadsheet.worksheet('master')
+    worksheet.update([[sum_k4]], 'L4')
