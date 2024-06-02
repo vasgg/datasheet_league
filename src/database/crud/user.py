@@ -25,18 +25,18 @@ async def get_user_from_db_by_tg_id(telegram_id: int, db_session: AsyncSession) 
 
 async def get_last_time_checked_users_ids(db_session: AsyncSession) -> list[User.telegram_id]:
     query = select(User.telegram_id).filter(User.last_time_checked,
-                                            User.telegram_id.notin_([settings.ADMIN, settings.OWNER, *settings.BET_ADMINS]))
+                                            User.telegram_id.notin_([settings.OWNER, *settings.BET_ADMINS]))
     result: Result = await db_session.execute(query)
     return list(result.scalars().all())
 
 
 async def get_all_users(db_session: AsyncSession) -> list[User]:
-    query = select(User).filter(User.telegram_id.notin_([settings.ADMIN, settings.OWNER, *settings.BET_ADMINS]))
+    query = select(User).filter(User.telegram_id.notin_([settings.OWNER, *settings.BET_ADMINS]))
     result = await db_session.execute(query)
     return list(result.scalars().all())
 
 
 async def get_all_users_ids(db_session: AsyncSession) -> list[User.telegram_id]:
-    query = select(User.telegram_id).filter(User.telegram_id.notin_([settings.ADMIN, settings.OWNER, *settings.BET_ADMINS]))
+    query = select(User.telegram_id).filter(User.telegram_id.notin_([settings.OWNER, *settings.BET_ADMINS]))
     result = await db_session.execute(query)
     return list(result.scalars().all())
