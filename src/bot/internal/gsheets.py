@@ -64,7 +64,7 @@ async def post_to_master_sheet(event: Event, db_session: AsyncSession, client: g
 async def post_to_player_sheet(sheet_name: str, event_id: int, data: list, line: int, client: gspread.Client):
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet(sheet_name)
-    users_rows = count_filled_cells_in_notes_column(worksheet, line)
+    users_rows = count_filled_cells_in_notes_column(worksheet)
     new_line = users_rows + line
     more_data = [[
         f'=ROUND(IF(F{new_line}<0,(100/-F{new_line})*E{new_line},(F{new_line}/100)*E{new_line}),0)',
@@ -91,10 +91,9 @@ async def get_user_balance(fullname: str, client: gspread.Client) -> str:
     return worksheet.acell('K4').value
 
 
-def count_filled_cells_in_notes_column(worksheet: gspread.Worksheet, end_row: int) -> int:
+def count_filled_cells_in_notes_column(worksheet: gspread.Worksheet) -> int:
     values = worksheet.col_values(1)[1:555]
     filled_cells_count = sum(1 for value in values if value)
-    print(f"Filled cells count: {filled_cells_count}")
     return filled_cells_count
 
 
@@ -102,9 +101,7 @@ async def add_summ_balance_formula(client: gspread.Client):
     spreadsheet = client.open(settings.TABLE_NAME)
     all_sheets = spreadsheet.worksheets()
     sheet_names = [sheet.title for sheet in all_sheets if sheet.title.lower() != 'master']
-
     formula_parts = [f"INDIRECT(\"{sheet_name}!K4\")" for sheet_name in sheet_names]
     formula = f"=SUM({','.join(formula_parts)})"
-
     worksheet = await ensure_master_sheet(client)
     worksheet.update([[formula]], f'L4', raw=False)

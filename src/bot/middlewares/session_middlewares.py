@@ -5,7 +5,6 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from sqlalchemy.exc import PendingRollbackError
 
 from database.database_connector import DatabaseConnector
 
