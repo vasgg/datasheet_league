@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     BOT_TOKEN: SecretStr
     DB_NAME: str
     TABLE_NAME: str
-    OWNER: str
-    BET_ADMINS: list
+    OWNER: int
+    BET_ADMINS: list[int]
     db_echo: bool = False
 
     @property

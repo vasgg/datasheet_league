@@ -19,7 +19,7 @@ async def get_last_event(db_session: AsyncSession) -> Event:
 
 
 async def get_active_events(telegram_id: int, db_session: AsyncSession) -> list[Event]:
-    query = select(Bet.event_id).filter(Bet.user_telegram_id == telegram_id, Bet.status == BetStatus.INVITED)
+    query = select(Bet.event_id).filter(Bet.user_telegram_id == telegram_id)
     result: Result = await db_session.execute(query)
     event_ids = result.scalars().all()
     query = select(Event).filter(Event.id.in_(event_ids))
