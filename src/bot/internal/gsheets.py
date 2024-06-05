@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.internal.lists import MASTER_HEADER, MASTER_STATS, PLAYER_HEADER, PLAYER_STATS
 from config import settings
+from database.crud.bet import count_bets_from_user
 from database.crud.event import count_events, get_average_weighted_odds_by_event_id, get_total_risk_by_event_id
-from database.models import Event
+from database.models import Event, User
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +65,8 @@ async def post_to_master_sheet(event: Event, db_session: AsyncSession, client: g
 async def post_to_player_sheet(sheet_name: str, event_id: int, data: list, line: int, client: gspread.Client):
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet(sheet_name)
-    users_rows = count_filled_cells_in_notes_column(worksheet)
-    new_line = users_rows + line
+    admin_rows = count_filled_cells_in_notes_column(worksheet)
+    new_line = admin_rows + line
     more_data = [[
         f'=ROUND(IF(F{new_line}<0,(100/-F{new_line})*E{new_line},(F{new_line}/100)*E{new_line}),0)',
         f'=master!I{event_id + 1}',
@@ -76,13 +77,13 @@ async def post_to_player_sheet(sheet_name: str, event_id: int, data: list, line:
     logger.info(f"Added row to '{sheet_name}': {data}, line {new_line}")
 
 
-async def update_master_list_values(event_id: int, line: int, client: gspread.Client, db_session: AsyncSession):
+async def update_master_list_values(event_id: int, client: gspread.Client, db_session: AsyncSession):
     total_risk = await get_total_risk_by_event_id(event_id, db_session)
     average_odds = await get_average_weighted_odds_by_event_id(event_id, db_session)
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet("master")
-    worksheet.update([[total_risk, average_odds]], f'F{line}:G{line}')
-    logger.info(f"Updated 'master' list: {total_risk}, {average_odds}, line {line}")
+    worksheet.update([[total_risk, average_odds]], f'F{event_id + 1}:G{event_id + 1}')
+    logger.info(f"Updated 'master' list: {total_risk}, {average_odds}, line {event_id + 1}")
 
 
 async def get_user_balance(fullname: str, client: gspread.Client) -> str:
@@ -105,3 +106,12 @@ async def add_summ_balance_formula(client: gspread.Client):
     formula = f"=SUM({','.join(formula_parts)})"
     worksheet = await ensure_master_sheet(client)
     worksheet.update([[formula]], f'L4', raw=False)
+
+
+async def delete_bet_from_user_sheet(user: User, bets: int, client: gspread.Client):
+    spreadsheet = client.open(settings.TABLE_NAME)
+    worksheet = spreadsheet.worksheet(f'{user.fullname} bets')
+    admin_rows = count_filled_cells_in_notes_column(worksheet)
+    line = admin_rows + bets + 1
+    worksheet.batch_clear([f'B{line}:I{line}'])
+    logger.info(f"Deleted bet from '{user.fullname} bets': line {line}")

@@ -8,9 +8,9 @@ from gspread import Client
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.users_dialog import start_dialog_handler
-from bot.internal.gsheets import get_user_balance, post_to_player_sheet, update_master_list_values
+from bot.internal.gsheets import delete_bet_from_user_sheet, get_user_balance, post_to_player_sheet, update_master_list_values
 from config import settings
-from database.crud.bet import count_bets_from_user, get_user_bets_by_event_id
+from database.crud.bet import count_bets_from_user, withdraw_bet, get_last_bet_by_user_id, get_user_bets_by_event_id
 from database.crud.event import get_active_events, get_event_by_id
 from database.models import Bet, User
 from enums import BetStatus
@@ -48,7 +48,7 @@ async def support_message(message: types.Message, db_session: AsyncSession) -> N
         await message.answer(text='Show_active command disabled for owner and bet admins.')
         return
     active_events = await get_active_events(message.from_user.id, db_session)
-    text = '\n'.join([f'{event.id} ({event.league}, {event.bet_name}, {event.worst_odds})' for event in active_events])
+    text = '\n'.join([f'Event {event.id}, {event.league}, {event.bet_name}, {event.worst_odds}' for event in active_events])
     await message.answer(text=text if text else 'No active events')
 
 
@@ -66,7 +66,7 @@ async def new_game_message(message: types.Message, dialog_manager: DialogManager
                                   'use <code>/new Legue, bet_name, worst odds</code>')
         return
     await state.update_data(league=league, bet_name=bet_name, worst_odds=worst_odds)
-    text = f'Creating new event, {league}, {bet_name}, worst odds {worst_odds}...'
+    text = f'Creating new event: {league}, {bet_name}, worst odds {worst_odds}...'
     await message.answer(text=text)
     await start_dialog_handler(message, dialog_manager)
 
@@ -88,6 +88,10 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         await message.answer(text='please provide correct values')
         return
     event = await get_event_by_id(event_id, db_session)
+    if not event:
+        await message.answer(text=f'don\'t have access to event {event_id}\n'
+                                  f'use /show_active to find active events')
+        return
     if odds < event.worst_odds:
         await message.answer(text=f'odds less than {event.worst_odds} are not accepted.')
         return
@@ -137,4 +141,20 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
     bets = await count_bets_from_user(message.from_user.id, db_session) - 1
     line = bets + 2
     await post_to_player_sheet(sheet_name, event_id, data, line, gspread_client)
-    await update_master_list_values(event_id, event_id + 1, gspread_client, db_session)
+    await update_master_list_values(event_id, gspread_client, db_session)
+
+
+@router.message(Command('cancel'))
+async def cancel_bet_command(message: types.Message, user: User, db_session: AsyncSession, gspread_client: Client) -> None:
+    if message.from_user.id in [settings.OWNER, *settings.BET_ADMINS]:
+        await message.answer(text='Cancel command disabled for owner and bet admins.')
+        return
+    user_bets = await count_bets_from_user(user.telegram_id, db_session)
+    last_bet = await get_last_bet_by_user_id(user.telegram_id, db_session)
+    if not last_bet:
+        await message.answer(text='No bets to cancel.')
+        return
+    await message.answer(text='Last bet canceled.')
+    await delete_bet_from_user_sheet(user, user_bets, gspread_client)
+    await withdraw_bet(last_bet.id, db_session)
+    await update_master_list_values(last_bet.event_id, gspread_client, db_session)
