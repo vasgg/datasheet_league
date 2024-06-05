@@ -81,7 +81,7 @@ users_multiselect = Multiselect(
     id="m_users",
     item_id_getter=operator.itemgetter(1),
     items="users",
-    max_selected=20,
+    max_selected=100,
 )
 
 grouped_multiselect = Group(users_multiselect, width=3)
