@@ -66,7 +66,7 @@ async def new_game_message(message: types.Message, dialog_manager: DialogManager
                                   'use <code>/new Legue, bet_name, worst odds</code>')
         return
     await state.update_data(league=league, bet_name=bet_name, worst_odds=worst_odds)
-    text = f'Creating new event: {league}, {bet_name}, worst odds {worst_odds}...'
+    text = f'Creating new event: {league}, {bet_name}, worst odds {worst_odds}'
     await message.answer(text=text)
     await start_dialog_handler(message, dialog_manager)
 
@@ -158,3 +158,21 @@ async def cancel_bet_command(message: types.Message, user: User, db_session: Asy
     await delete_bet_from_user_sheet(user, user_bets, gspread_client)
     await withdraw_bet(last_bet.id, db_session)
     await update_master_list_values(last_bet.event_id, gspread_client, db_session)
+
+
+@router.message(Command('recount'))
+async def recount_command(message: types.Message, db_session: AsyncSession, gspread_client: Client) -> None:
+    if message.from_user.id not in [settings.OWNER, *settings.BET_ADMINS]:
+        await message.answer(text='Recount command disabled for users.')
+        return
+    try:
+        event_id = int(message.text.split()[1])
+    except (ValueError, IndexError):
+        await message.answer(text='please provide correct event id')
+        return
+    event = await get_event_by_id(event_id, db_session)
+    if not event:
+        await message.answer(text=f'can\'t find event {event_id}')
+        return
+    await message.answer(text='Recounting values in master list...')
+    await update_master_list_values(event_id, gspread_client, db_session)
