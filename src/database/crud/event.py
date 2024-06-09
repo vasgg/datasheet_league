@@ -1,7 +1,6 @@
 from sqlalchemy import Result, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.crud.bet import get_bets_by_event_id
 from database.models import Bet, Event
 from enums import BetStatus
 
@@ -34,20 +33,8 @@ async def get_total_risk_by_event_id(event_id: int, db_session: AsyncSession) ->
     return sum(list(result.scalars().all()))
 
 
-async def get_average_weighted_odds_by_event_id(event_id: int, db_session: AsyncSession) -> float:
-    event = await get_event_by_id(event_id, db_session)
-    bets = await get_bets_by_event_id(event_id, db_session)
-    summ = 0
-    total_risk = 0
-
-    for bet in bets:
-        summ += abs(bet.odds) * bet.risk_amount
-        total_risk += bet.risk_amount
-    average_weighted_odds = summ / total_risk if total_risk != 0 else 0
-    return average_weighted_odds if event.worst_odds > 0 else average_weighted_odds * -1
-
-
 async def count_events(db_session: AsyncSession) -> int:
     query = select(func.count(Event.id))
     result: Result = await db_session.execute(query)
     return result.scalar()
+

@@ -37,3 +37,29 @@ async def withdraw_bet(bet_id: int, db_session: AsyncSession) -> None:
     query = update(Bet).filter(Bet.id == bet_id).values(status=BetStatus.INVITED)
     await db_session.execute(query)
     await db_session.flush()
+
+
+def calculate_weighted_odds(bets: list[Bet]):
+    decimal_odds = []
+    weights = []
+    for bet in bets:
+        decimal_odds.append(american_to_decimal(bet.odds))
+        weights.append(bet.risk_amount)
+
+    weighted_decimal_odds = sum(odds * weight for odds, weight in zip(decimal_odds, weights)) / sum(weights)
+    weighted_american_odds = decimal_to_american(weighted_decimal_odds)
+    return weighted_american_odds
+
+
+def american_to_decimal(odds):
+    if odds > 0:
+        return 1 + odds / 100
+    else:
+        return 1 - 100 / odds
+
+
+def decimal_to_american(odds):
+    if odds >= 2:
+        return (odds - 1) * 100
+    else:
+        return -100 / (odds - 1)

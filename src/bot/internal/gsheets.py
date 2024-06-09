@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.internal.lists import MASTER_HEADER, MASTER_STATS, PLAYER_HEADER, PLAYER_STATS
 from config import settings
-from database.crud.bet import count_bets_from_user
-from database.crud.event import count_events, get_average_weighted_odds_by_event_id, get_total_risk_by_event_id
+from database.crud.bet import calculate_weighted_odds, get_bets_by_event_id
+from database.crud.event import count_events, get_total_risk_by_event_id
 from database.models import Event, User
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,8 @@ async def post_to_player_sheet(sheet_name: str, event_id: int, data: list, line:
 
 async def update_master_list_values(event_id: int, client: gspread.Client, db_session: AsyncSession):
     total_risk = await get_total_risk_by_event_id(event_id, db_session)
-    average_odds = await get_average_weighted_odds_by_event_id(event_id, db_session)
+    bets = await get_bets_by_event_id(event_id, db_session)
+    average_odds = calculate_weighted_odds(bets)
     spreadsheet = client.open(settings.TABLE_NAME)
     worksheet = spreadsheet.worksheet("master")
     worksheet.update([[total_risk, average_odds]], f'F{event_id + 1}:G{event_id + 1}')
