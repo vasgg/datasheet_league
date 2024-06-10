@@ -1,6 +1,7 @@
 from sqlalchemy import Result, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from calc.odds_convertor import convert_us_to_dec, convert_dec_to_us
 from database.crud.bet import get_bets_by_event_id
 from database.models import Bet, Event
 from enums import BetStatus
@@ -41,10 +42,10 @@ async def get_average_weighted_odds_by_event_id(event_id: int, db_session: Async
     total_risk = 0
 
     for bet in bets:
-        summ += abs(bet.odds) * bet.risk_amount
+        summ += convert_us_to_dec([bet.odds])[0] * bet.risk_amount
         total_risk += bet.risk_amount
     average_weighted_odds = summ / total_risk if total_risk != 0 else 0
-    return average_weighted_odds if event.worst_odds > 0 else average_weighted_odds * -1
+    return convert_dec_to_us([average_weighted_odds])[0]
 
 
 async def count_events(db_session: AsyncSession) -> int:
