@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from aiogram import Router, types
@@ -187,5 +188,6 @@ async def recount_command(message: types.Message, db_session: AsyncSession, gspr
     events = await get_all_event_ids(db_session)
     await message.answer('Starting recounting...')
     for event_id in events:
+        logging.info(f"Updating {event_id=}")
         await update_master_list_values(event_id, gspread_client, db_session)
     await message.answer("Recounting done")
