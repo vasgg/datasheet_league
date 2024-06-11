@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -190,4 +191,5 @@ async def recount_command(message: types.Message, db_session: AsyncSession, gspr
     for event_id in events:
         logging.info(f"Updating {event_id=}")
         await update_master_list_values(event_id, gspread_client, db_session)
+        await asyncio.sleep(3)
     await message.answer("Recounting done")
