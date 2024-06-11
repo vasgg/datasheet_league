@@ -35,19 +35,6 @@ async def get_total_risk_by_event_id(event_id: int, db_session: AsyncSession) ->
     return sum(list(result.scalars().all()))
 
 
-async def get_average_weighted_odds_by_event_id(event_id: int, db_session: AsyncSession) -> float:
-    event = await get_event_by_id(event_id, db_session)
-    bets = await get_bets_by_event_id(event_id, db_session)
-    summ = 0
-    total_risk = 0
-
-    for bet in bets:
-        summ += convert_us_to_dec([bet.odds])[0] * bet.risk_amount
-        total_risk += bet.risk_amount
-    average_weighted_odds = summ / total_risk if total_risk != 0 else 0
-    return convert_dec_to_us([average_weighted_odds])[0]
-
-
 async def count_events(db_session: AsyncSession) -> int:
     query = select(func.count(Event.id))
     result: Result = await db_session.execute(query)
