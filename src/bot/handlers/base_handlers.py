@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from aiogram import Router, types
@@ -11,7 +12,7 @@ from bot.handlers.users_dialog import start_dialog_handler
 from bot.internal.gsheets import delete_bet_from_user_sheet, get_user_balance, post_to_player_sheet, update_master_list_values
 from config import settings
 from database.crud.bet import count_bets_from_user, withdraw_bet, get_last_bet_by_user_id, get_user_bets_by_event_id
-from database.crud.event import get_active_events, get_event_by_id
+from database.crud.event import get_active_events, get_event_by_id, get_all_event_ids
 from database.models import Bet, User
 from enums import BetStatus
 
@@ -176,3 +177,17 @@ async def recount_command(message: types.Message, db_session: AsyncSession, gspr
         return
     await message.answer(text='Recounting values in master list...')
     await update_master_list_values(event_id, gspread_client, db_session)
+
+
+@router.message(Command('recount_all'))
+async def recount_command(message: types.Message, db_session: AsyncSession, gspread_client: Client) -> None:
+    if message.from_user.id not in [settings.OWNER, *settings.BET_ADMINS]:
+        await message.answer('Recount command disabled for users.')
+        return
+
+    events = await get_all_event_ids(db_session)
+    await message.answer('Starting recounting...')
+    for event_id in events:
+        logging.info(f"Updating {event_id=}")
+        await update_master_list_values(event_id, gspread_client, db_session)
+    await message.answer("Recounting done")

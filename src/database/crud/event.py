@@ -1,8 +1,6 @@
 from sqlalchemy import Result, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from calc.odds_convertor import convert_us_to_dec, convert_dec_to_us
-from database.crud.bet import get_bets_by_event_id
 from database.models import Bet, Event
 from enums import BetStatus
 
@@ -11,6 +9,12 @@ async def get_event_by_id(event_id: int, db_session: AsyncSession) -> Event:
     query = select(Event).filter(Event.id == event_id)
     result: Result = await db_session.execute(query)
     return result.scalar()
+
+
+async def get_all_event_ids(db_session: AsyncSession) -> list[int]:
+    query = select(Event.id)
+    result: Result = await db_session.execute(query)
+    return list(result.scalars().all())
 
 
 async def get_last_event(db_session: AsyncSession) -> Event:

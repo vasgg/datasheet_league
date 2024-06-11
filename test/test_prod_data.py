@@ -2,6 +2,7 @@ import pytest
 
 from calc.average_weighted_odds import average_weighted_odds
 from database.crud.bet import get_bets_by_event_id
+from database.crud.event import get_all_event_ids
 from database.database_connector import DatabaseConnector
 
 
@@ -27,3 +28,9 @@ async def test_prod_data(db: 'DatabaseConnector'):
         assert -101.24 == await get_tgt_by_event_id(113, session)
         assert 101 == await get_tgt_by_event_id(136, session)
 
+
+@pytest.mark.asyncio
+async def test_prod_data(db: 'DatabaseConnector'):
+    async with db.session_factory.begin() as session:
+        data = await get_all_event_ids(session)
+        assert len(data) == 172
