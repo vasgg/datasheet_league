@@ -65,7 +65,7 @@ async def new_game_message(message: types.Message, dialog_manager: DialogManager
         worst_odds = int(message.text.split(',')[2].strip())
     except (ValueError, IndexError):
         await message.answer(text='please provide correct values\n'
-                                  'use <code>/new Legue, bet_name, worst odds</code>')
+                                  'use <code>/new League, bet_name, worst odds</code>')
         return
     await state.update_data(league=league, bet_name=bet_name, worst_odds=worst_odds)
     text = f'Creating new event: {league}, {bet_name}, worst odds {worst_odds}'
@@ -128,8 +128,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
                 created_at=datetime.now(timezone.utc),
                 status=BetStatus.FILLED
             )
-    await message.answer(text=f'Event {event_id}, {event.league}, {event.bet_name}:\n'
-                              f'Bet {bet.risk_amount}, Odds {bet.odds} filled.')
+    await message.answer("Filling...")
     db_session.add(bet)
     await db_session.flush()
     data = [[
@@ -144,6 +143,8 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
     line = bets + 2
     await post_to_player_sheet(sheet_name, event_id, data, line, gspread_client)
     await update_master_list_values(event_id, gspread_client, db_session)
+    await message.answer(text=f'Event {event_id}, {event.league}, {event.bet_name}:\n'
+                              f'Bet {bet.risk_amount}, Odds {bet.odds} filled.')
 
 
 @router.message(Command('cancel'))
@@ -156,10 +157,11 @@ async def cancel_bet_command(message: types.Message, user: User, db_session: Asy
     if not last_bet:
         await message.answer(text='No bets to cancel.')
         return
-    await message.answer(text='Last bet canceled.')
+    await message.answer("Canceling...")
     await delete_bet_from_user_sheet(user, user_bets, gspread_client)
     await withdraw_bet(last_bet.id, db_session)
     await update_master_list_values(last_bet.event_id, gspread_client, db_session)
+    await message.answer(text='Last bet canceled.')
 
 
 @router.message(Command('recount'))
