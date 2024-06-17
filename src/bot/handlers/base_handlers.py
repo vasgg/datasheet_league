@@ -74,7 +74,7 @@ async def new_game_message(message: types.Message, dialog_manager: DialogManager
 
 
 @router.message(Command('fill'))
-async def new_game_message(message: types.Message, db_session: AsyncSession, gspread_client: Client) -> None:
+async def new_game_message(message: types.Message, user: User, db_session: AsyncSession, gspread_client: Client) -> None:
     if message.from_user.id in [settings.OWNER, *settings.BET_ADMINS]:
         await message.answer(text='Fill command disabled for owner and bet admins.')
         return
@@ -138,7 +138,7 @@ async def new_game_message(message: types.Message, db_session: AsyncSession, gsp
         bet.risk_amount,
         bet.odds,
     ]]
-    sheet_name = f'{message.from_user.full_name} bets'
+    sheet_name = f'{user.fullname} bets'
     bets = await count_bets_from_user(message.from_user.id, db_session) - 1
     line = bets + 2
     await post_to_player_sheet(sheet_name, event_id, data, line, gspread_client)
