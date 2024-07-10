@@ -1,6 +1,9 @@
+import asyncio
+import logging
 import operator
 from typing import Any
 
+from aiogram.exceptions import TelegramForbiddenError
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import (Dialog, DialogManager, StartMode, Window)
@@ -60,7 +63,11 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
                 user_telegram_id=user_id,
             )
             db_session.add(new_bet)
-            await callback.bot.send_message(user_id, text)
+            try:
+                await callback.bot.send_message(user_id, text)
+                await asyncio.sleep(1)
+            except TelegramForbiddenError:
+                logging.debug(f"TelegramForbiddenError skipped for {user_id=}")
         else:
             user.last_time_checked = False
         db_session.add(user)

@@ -8,7 +8,7 @@ from database.database_connector import DatabaseConnector
 
 @pytest.fixture()
 async def db():
-    test_database = DatabaseConnector(url="sqlite+aiosqlite:///prod.db", echo=True)
+    test_database = DatabaseConnector(url="sqlite+aiosqlite:///Dispenser.db", echo=True)
 
     yield test_database
 
@@ -17,8 +17,10 @@ async def db():
 
 async def get_tgt_by_event_id(event_id: int, db_session) -> float:
     bets = await get_bets_by_event_id(event_id, db_session)
-    print(bets)
+    for bet in bets:
+        print(f"{bet.user_telegram_id} {bet.risk_amount=} {bet.odds=}")
     average_odds = average_weighted_odds(bets)
+    print(f"{average_odds=}")
     return average_odds
 
 
@@ -28,7 +30,7 @@ async def test_prod_data(db: 'DatabaseConnector'):
         # assert 105.15 == await get_tgt_by_event_id(123, session)
         # assert -101.24 == await get_tgt_by_event_id(113, session)
         # assert 101 == await get_tgt_by_event_id(136, session)
-        await get_tgt_by_event_id(31, session)
+        await get_tgt_by_event_id(339, session)
 
 
 @pytest.mark.asyncio
