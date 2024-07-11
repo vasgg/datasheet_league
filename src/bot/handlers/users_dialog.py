@@ -65,7 +65,6 @@ async def on_user_selected(callback: CallbackQuery, button: Button, manager: Dia
             db_session.add(new_bet)
             try:
                 await callback.bot.send_message(user_id, text)
-                await asyncio.sleep(1)
             except TelegramForbiddenError:
                 logging.debug(f"TelegramForbiddenError skipped for {user_id=}")
         else:
