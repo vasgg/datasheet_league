@@ -21,9 +21,24 @@ class User(Base):
     fullname: Mapped[str]
     username: Mapped[str | None] = mapped_column(String(32))
     last_time_checked: Mapped[bool] = mapped_column(default=False, server_default='0')
+    selected: Mapped[str | None]
 
     def __str__(self):
         return f"User(id={self.id}, fullname={self.fullname}, telegram_id={self.telegram_id})"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class GroupTable(Base):
+    __tablename__ = 'groups'
+
+    group_name: Mapped[str]
+    user_telegram_id: Mapped[int] = mapped_column(ForeignKey('users.telegram_id'))
+    selected: Mapped[str | None]
+
+    def __str__(self):
+        return f"Group(id={self.id}, groupname={self.group_name}, user_telegram_id={self.user_telegram_id})"
 
     def __repr__(self):
         return self.__str__()

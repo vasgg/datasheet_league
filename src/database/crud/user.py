@@ -30,6 +30,15 @@ async def get_last_time_checked_users_ids(db_session: AsyncSession) -> list[User
     return list(result.scalars().all())
 
 
+async def get_last_time_checked_users_ids_for_one(user_id: int, db_session: AsyncSession) -> list[int]:
+    query = select(User.selected).where(User.telegram_id == user_id)
+    result: Result = await db_session.execute(query)
+    res_str = result.scalar()
+    if res_str is None:
+        return []
+    return list(res_str.split(';'))
+
+
 async def get_all_users(db_session: AsyncSession) -> list[User]:
     query = select(User).filter(User.telegram_id.notin_([settings.OWNER, *settings.BET_ADMINS]))
     result = await db_session.execute(query)

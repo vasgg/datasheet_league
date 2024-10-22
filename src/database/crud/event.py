@@ -1,8 +1,34 @@
-from sqlalchemy import Result, desc, func, select
+from sqlalchemy import Result, desc, func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Bet, Event
+from database.models import Bet, Event, GroupTable
 from enums import BetStatus
+
+
+async def has_group_with_name(group_name: str, user_id: int, db_session: AsyncSession) -> bool:
+    query = select(GroupTable).filter(GroupTable.group_name == group_name).filter(
+        GroupTable.user_telegram_id == user_id)
+    result: Result = await db_session.execute(query)
+    return result.scalar() is not None
+
+
+async def get_groups_for_user(user_id: int, db_session: AsyncSession) -> list[GroupTable]:
+    query = select(GroupTable).filter(GroupTable.user_telegram_id == user_id)
+    result: Result = await db_session.execute(query)
+    return list(result.scalars().all())
+
+
+async def delete_group_by_name(group_name: str, user_id: int, db_session: AsyncSession) -> bool:
+    query = delete(GroupTable).filter(GroupTable.group_name == group_name).filter(
+        GroupTable.user_telegram_id == user_id)
+    result = await db_session.execute(query)
+    return result.rowcount > 0
+
+
+async def get_group_by_id(group_id: int, db_session: AsyncSession) -> GroupTable:
+    query = select(GroupTable).filter(GroupTable.id == group_id)
+    result: Result = await db_session.execute(query)
+    return result.scalar_one()
 
 
 async def get_event_by_id(event_id: int, db_session: AsyncSession) -> Event:
